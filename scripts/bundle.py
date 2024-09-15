@@ -9,8 +9,10 @@ print("Bundle addon...")
 
 zip = zipfile.ZipFile("dist/ke_i2m.zip", "w", zipfile.ZIP_DEFLATED)
 zip.write("LICENSE", "ke_i2m/LICENSE")
-zip.write("src/__init__.py", "ke_i2m/__init__.py")
-zip.write("src/clearslot.py", "ke_i2m/clearslot.py")
+
+dir_list = os.listdir("src")
+for file in dir_list:
+    zip.write(f"src/{file}", f"ke_i2m/{file}")
 zip.close()
 
 print("Done")

@@ -1,6 +1,6 @@
 # Image2Mesh Standard Version
 
-## Devlopment
+## Development
 
 ```shell
 # Install packages
