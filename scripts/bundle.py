@@ -1,7 +1,6 @@
 import os
 import zipfile
 import re
-from os.path import basename
 
 if not os.path.exists("dist"):
     os.makedirs("dist")

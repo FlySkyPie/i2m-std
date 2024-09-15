@@ -30,7 +30,6 @@ def update_panel(self, context):
 
     except Exception as e:
         print("\n[{}]\n{}\n\nError:\n{}".format("ke_i2m", message, e))
-        pass
 
 
 class KeI2Maddonprefs(AddonPreferences):

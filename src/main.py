@@ -2,11 +2,9 @@ import bpy
 import bmesh
 import sys
 import time
-import os
 from bpy.types import PropertyGroup, Operator, Panel, AddonPreferences
 from mathutils import Vector, Matrix
 from bpy_extras.io_utils import ImportHelper
-from collections import Counter
 from bpy.props import (
     BoolProperty,
     PointerProperty,
@@ -261,7 +259,7 @@ class KeI2M(Operator):
     noz = False
     use_rgb = False
     rgb = (1, 1, 1)
-    cmats = []
+    cmats: list = []
     has_alpha = True
     color_cap = 16
     geo = "PLANE"

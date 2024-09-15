@@ -18,9 +18,6 @@
 
 import bpy
 import bmesh
-import sys
-import time
-import os
 from bpy.types import PropertyGroup, Operator, Panel, AddonPreferences
 from mathutils import Vector, Matrix
 from bpy_extras.io_utils import ImportHelper
@@ -154,7 +151,6 @@ def unregister():
 
     except Exception as e:
         print("unregister fail:\n", e)
-        pass
 
 
 if __name__ == "__main__":

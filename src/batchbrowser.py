@@ -1,6 +1,9 @@
 import bpy
 from bpy.types import PropertyGroup, Operator, Panel, AddonPreferences
 from bpy_extras.io_utils import ImportHelper
+from bpy.props import (
+    StringProperty,
+)
 
 from .utilities import load_slot
 
@@ -10,7 +13,7 @@ class KeI2Mbatchbrowser(Operator, ImportHelper):
     bl_label = "Batch Process Folder"
     bl_description = "Pick a folder to batch kei2m on ALL the images in the folder.\n --> Using last used settings <--"
 
-    filter_glob: bpy.props.StringProperty(subtype="DIR_PATH")
+    filter_glob: StringProperty(subtype="DIR_PATH")
 
     def execute(self, context):
         if not self.filepath:
