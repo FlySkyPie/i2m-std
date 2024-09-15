@@ -26,14 +26,16 @@ from mathutils import Vector, Matrix
 from bpy_extras.io_utils import ImportHelper
 from collections import Counter
 from bpy.props import (
-        BoolProperty,
-        PointerProperty,
-        FloatProperty,
-        StringProperty,
-        EnumProperty,
-        IntProperty,
-        FloatVectorProperty,
-        )
+    BoolProperty,
+    PointerProperty,
+    FloatProperty,
+    StringProperty,
+    EnumProperty,
+    IntProperty,
+    FloatVectorProperty,
+)
+
+from .clearslot import KeI2Mclearslot
 
 bl_info = {
     "name": "kei2m",
@@ -53,7 +55,7 @@ kei2m_version = 1.307
 
 def is_bversion(req_ver):
     """Is current Blender version the required version (as int: #### )"""
-    if int("".join([str(i) for i in bpy.app.version]).ljust(4, '0')) < req_ver:
+    if int("".join([str(i) for i in bpy.app.version]).ljust(4, "0")) < req_ver:
         return False
     return True
 
@@ -61,7 +63,7 @@ def is_bversion(req_ver):
 def make_entry(h, width, w, pixels):
     idx = (h * width) + w
     px_index = idx * 4
-    return pixels[px_index:px_index + 4]
+    return pixels[px_index : px_index + 4]
 
 
 def alpha_check(images, rgb=False, c2m=False):
@@ -89,7 +91,11 @@ def reduce_colors(pixelmap, threshold=0.51, cap=None):
         similar = [[c][0]]
         for oc in reversed(common_colors):
             if oc != c:
-                if rmin < oc[0][0] < rmax and gmin < oc[0][1] < gmax and bmin < oc[0][2] < bmax:
+                if (
+                    rmin < oc[0][0] < rmax
+                    and gmin < oc[0][1] < gmax
+                    and bmin < oc[0][2] < bmax
+                ):
                     similar.append(oc[0])
                     common_colors.remove(oc)
         color_groups.append(similar)
@@ -104,132 +110,234 @@ class KeI2M(Operator):
     bl_idname = "ke.i2m"
     bl_label = "kei2m"
     bl_description = "Image(s) To Mesh Generator"
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_options = {"REGISTER", "UNDO"}
 
-    opacity: IntProperty(min=1, max=100, default=50, name="Opacity Tolerance", subtype="PERCENTAGE",
-                         soft_min=50, soft_max=50,
-                         description="100% = Will only allow completely opaque image pixels\n"
-                                     "Do not use as slider - Use keyboard input!")
+    opacity: IntProperty(
+        min=1,
+        max=100,
+        default=50,
+        name="Opacity Tolerance",
+        subtype="PERCENTAGE",
+        soft_min=50,
+        soft_max=50,
+        description="100% = Will only allow completely opaque image pixels\n"
+        "Do not use as slider - Use keyboard input!",
+    )
     workres: EnumProperty(
-        items=[("64", "64x64", "", "", 1),
-               ("128", "128x128", "", "", 2),
-               ("256", "256x256", "", "", 3),
-               ("512", "512x512", "", "", 4),
-               ("1024", "1024x1024", "", "", 5),
-               ("IMAGE", "Image Size", "", "", 6),
-               ],
-        name="Work Resolution", default="128",
+        items=[
+            ("64", "64x64", "", "", 1),
+            ("128", "128x128", "", "", 2),
+            ("256", "256x256", "", "", 3),
+            ("512", "512x512", "", "", 4),
+            ("1024", "1024x1024", "", "", 5),
+            ("IMAGE", "Image Size", "", "", 6),
+        ],
+        name="Work Resolution",
+        default="128",
         description="The internal res. used for conversion.\nUse as low value as possible,\n"
-                    "1k or more can be VERY slow. (The complexity of the alpha will also matter)\n")
+        "1k or more can be VERY slow. (The complexity of the alpha will also matter)\n",
+    )
 
-    custom_workres: IntProperty(min=0, max=65536, default=0, name="Custom Resolution",
-                                soft_min=0, soft_max=0,
-                                description="Non-zero value will override Work Resolution X & Y sizes")
+    custom_workres: IntProperty(
+        min=0,
+        max=65536,
+        default=0,
+        name="Custom Resolution",
+        soft_min=0,
+        soft_max=0,
+        description="Non-zero value will override Work Resolution X & Y sizes",
+    )
 
-    screw_flip: BoolProperty(default=False, name="Flip Screw Source-Side",
-                             description="Flips the side used in a Screw geo conversion")
+    screw_flip: BoolProperty(
+        default=False,
+        name="Flip Screw Source-Side",
+        description="Flips the side used in a Screw geo conversion",
+    )
 
-    screw_xcomp: IntProperty(min=-100, max=100, default=15, name="Stretch Comp.", subtype="PERCENTAGE",
-                             description="Offset X projection scale to compensate for screw projection distortion\n"
-                                         "Do not use as slider! Use keyboard input!")
+    screw_xcomp: IntProperty(
+        min=-100,
+        max=100,
+        default=15,
+        name="Stretch Comp.",
+        subtype="PERCENTAGE",
+        description="Offset X projection scale to compensate for screw projection distortion\n"
+        "Do not use as slider! Use keyboard input!",
+    )
     reduce: EnumProperty(
-        items=[("REDUCED", "Reduced", "", "", 1),
-               ("SIMPLE", "Simple", "", "", 2),
-               ("DISSOLVE", "Dissolve", "", "", 3),
-               ("NONE", "None", "", "", 4),
-               ],
-        name="Mesh Reduction", default="SIMPLE",
+        items=[
+            ("REDUCED", "Reduced", "", "", 1),
+            ("SIMPLE", "Simple", "", "", 2),
+            ("DISSOLVE", "Dissolve", "", "", 3),
+            ("NONE", "None", "", "", 4),
+        ],
+        name="Mesh Reduction",
+        default="SIMPLE",
         description="Which type of mesh reduction to use:\n"
-                    "Reduced: No Smoothing & high polycount\n"
-                    "Simple: Low smoothing & high polycount\n"
-                    "Dissolve: Low polycount & high smoothness & reduction, slow\n"
-                    "None: Fast, but VERY high polycount. 1 workpixel = 1 face!\n")
+        "Reduced: No Smoothing & high polycount\n"
+        "Simple: Low smoothing & high polycount\n"
+        "Dissolve: Low polycount & high smoothness & reduction, slow\n"
+        "None: Fast, but VERY high polycount. 1 workpixel = 1 face!\n",
+    )
 
     c2m_reduce: EnumProperty(
-        items=[("DISSOLVE", "Dissolve", "", "", 1),
-               ("NONE", "None", "", "", 2),
-               ],
-        name="Mesh Reduction", default="DISSOLVE",
+        items=[
+            ("DISSOLVE", "Dissolve", "", "", 1),
+            ("NONE", "None", "", "", 2),
+        ],
+        name="Mesh Reduction",
+        default="DISSOLVE",
         description="Which type of mesh reduction to use:\n"
-                    "Dissolve: Low polycount, Slow\n"
-                    "None: High polycount, Fast. 1 workpixel = 1 face!\n")
+        "Dissolve: Low polycount, Slow\n"
+        "None: High polycount, Fast. 1 workpixel = 1 face!\n",
+    )
 
-    shade_smooth: BoolProperty(default=False, name="Smooth Shading", description="Smooth Shading & Auto-Smooth")
+    shade_smooth: BoolProperty(
+        default=False, name="Smooth Shading", description="Smooth Shading & Auto-Smooth"
+    )
 
-    front_only: BoolProperty(default=False, name="Front Texture Only",
-                             description="Only use Front Image for Texturing,\n"
-                                         "even if using Right/Top Boolean.\n"
-                                         "(So the Right/Top images can be just silhouettes)")
+    front_only: BoolProperty(
+        default=False,
+        name="Front Texture Only",
+        description="Only use Front Image for Texturing,\n"
+        "even if using Right/Top Boolean.\n"
+        "(So the Right/Top images can be just silhouettes)",
+    )
 
-    c2threshold: FloatProperty(min=0, max=1, default=0.52, name="Color Threshold",
-                               description="Tolerance for color separation / reduction (anti-aliasing removal)\n"
-                                           "Do not use as slider! Use keyboard input!")
+    c2threshold: FloatProperty(
+        min=0,
+        max=1,
+        default=0.52,
+        name="Color Threshold",
+        description="Tolerance for color separation / reduction (anti-aliasing removal)\n"
+        "Do not use as slider! Use keyboard input!",
+    )
 
-    c2m_smooth: IntProperty(min=0, max=100, default=100, name="Mesh Smoothing", subtype="PERCENTAGE",
-                            soft_min=100, soft_max=100,
-                            description="Smooths vertices below the pixel edge length threshold\n"
-                                        "(Avoiding long straight edges)\n"
-                                        "Do not use as slider! Use keyboard input!")
+    c2m_smooth: IntProperty(
+        min=0,
+        max=100,
+        default=100,
+        name="Mesh Smoothing",
+        subtype="PERCENTAGE",
+        soft_min=100,
+        soft_max=100,
+        description="Smooths vertices below the pixel edge length threshold\n"
+        "(Avoiding long straight edges)\n"
+        "Do not use as slider! Use keyboard input!",
+    )
 
-    qnd_mat: BoolProperty(default=False, name="QnD Materials",
-                          description="Will add Quick-n-Dirty Roughness and Bump nodes in addition to color.\n"
-                                      "Based on the color input.")
+    qnd_mat: BoolProperty(
+        default=False,
+        name="QnD Materials",
+        description="Will add Quick-n-Dirty Roughness and Bump nodes in addition to color.\n"
+        "Based on the color input.",
+    )
 
-    apply: BoolProperty(default=False, name="Apply All Modifiers",
-                        description="Applies the Screw (if used) & UV Projection Modifiers and removes the Empties)\n"
-                                    "Set to off to leave modifier live (for live uv projection modeling etc)")
+    apply: BoolProperty(
+        default=False,
+        name="Apply All Modifiers",
+        description="Applies the Screw (if used) & UV Projection Modifiers and removes the Empties)\n"
+        "Set to off to leave modifier live (for live uv projection modeling etc)",
+    )
 
-    apply_none: BoolProperty(default=False, name="Dont Apply Modifiers",
-                             description="Boolean Geo Mode: leaves Solidify & Boolean Modifiers active\n"
-                                         "For debugging & troubleshooting mostly")
+    apply_none: BoolProperty(
+        default=False,
+        name="Dont Apply Modifiers",
+        description="Boolean Geo Mode: leaves Solidify & Boolean Modifiers active\n"
+        "For debugging & troubleshooting mostly",
+    )
 
-    angle: FloatProperty(min=0, max=0.9, default=0.5, name="UV Angle Tolerance",
-                         soft_min=0.5, soft_max=0.5,
-                         description="0 to 0.9 Angle tolerance for axis-switching (from one axis to the other)")
+    angle: FloatProperty(
+        min=0,
+        max=0.9,
+        default=0.5,
+        name="UV Angle Tolerance",
+        soft_min=0.5,
+        soft_max=0.5,
+        description="0 to 0.9 Angle tolerance for axis-switching (from one axis to the other)",
+    )
 
-    reset: BoolProperty(default=False, name="Reset", description="Reset i2m to default values",
-                        options={"SKIP_SAVE", "HIDDEN"})
+    reset: BoolProperty(
+        default=False,
+        name="Reset",
+        description="Reset i2m to default values",
+        options={"SKIP_SAVE", "HIDDEN"},
+    )
 
-    batch: BoolProperty(default=False, name="Batch", description="Batch process all images in a folder with i2m",
-                        options={"SKIP_SAVE", "HIDDEN"})
+    batch: BoolProperty(
+        default=False,
+        name="Batch",
+        description="Batch process all images in a folder with i2m",
+        options={"SKIP_SAVE", "HIDDEN"},
+    )
 
-    vcolor: BoolProperty(default=False, name="Vertex Color",
-                         description="aka 'Retro Pixel Graphics'\n"
-                                     "Each Pixel makes up one face, "
-                                     "using Vertex Color instead of the Image Texture.\n"
-                                     "Calculated from the Image Texture")
+    vcolor: BoolProperty(
+        default=False,
+        name="Vertex Color",
+        description="aka 'Retro Pixel Graphics'\n"
+        "Each Pixel makes up one face, "
+        "using Vertex Color instead of the Image Texture.\n"
+        "Calculated from the Image Texture",
+    )
 
-    vcthreshold: FloatProperty(min=0, max=1, default=0, name="Color Threshold",
-                               soft_min=0, soft_max=0,
-                               description="Tolerance for color separation / reduction (anti-aliasing removal)\n"
-                                           "0 = No limit (full rgb) in Vertex Color Mode (Also Faster)\n"
-                                           "Sensitive: Increase by steps of 0.05 (Also, very slow!)\n"
-                                           "Do not use as slider! Use keyboard input!")
+    vcthreshold: FloatProperty(
+        min=0,
+        max=1,
+        default=0,
+        name="Color Threshold",
+        soft_min=0,
+        soft_max=0,
+        description="Tolerance for color separation / reduction (anti-aliasing removal)\n"
+        "0 = No limit (full rgb) in Vertex Color Mode (Also Faster)\n"
+        "Sensitive: Increase by steps of 0.05 (Also, very slow!)\n"
+        "Do not use as slider! Use keyboard input!",
+    )
 
-    dilation: IntProperty(min=0, max=99, default=0, name="Expand Border",
-                          soft_min=0, soft_max=0,
-                          description="Using a simple brute force dilation on the alpha (in pixels, roughly),\n"
-                                      "expanding it beyond the original image alpha borders. Zero to disable.\n"
-                                      "Tip: Tweak Tolerance value 1st - only use EB if necessary")
+    dilation: IntProperty(
+        min=0,
+        max=99,
+        default=0,
+        name="Expand Border",
+        soft_min=0,
+        soft_max=0,
+        description="Using a simple brute force dilation on the alpha (in pixels, roughly),\n"
+        "expanding it beyond the original image alpha borders. Zero to disable.\n"
+        "Tip: Tweak Tolerance value 1st - only use EB if necessary",
+    )
 
-    pixel_width: FloatProperty(min=0, max=1, default=0, name="Pixel Width", precision=5,
-                               soft_min=0, soft_max=0,
-                               description="Set pixel size in BU (meter)\n"
-                                           "Mesh Width is calculated with Pixel Width * Work Res")
+    pixel_width: FloatProperty(
+        min=0,
+        max=1,
+        default=0,
+        name="Pixel Width",
+        precision=5,
+        soft_min=0,
+        soft_max=0,
+        description="Set pixel size in BU (meter)\n"
+        "Mesh Width is calculated with Pixel Width * Work Res",
+    )
 
-    width: FloatProperty(min=0, default=1, name="Mesh Width", precision=3,
-                         soft_min=1, soft_max=1,
-                         description="Set Custom width/size in BU (meter)")
+    width: FloatProperty(
+        min=0,
+        default=1,
+        name="Mesh Width",
+        precision=3,
+        soft_min=1,
+        soft_max=1,
+        description="Set Custom width/size in BU (meter)",
+    )
 
     size: EnumProperty(
-        items=[("AUTOFIT", "Autofit", "", "", 1),
-               ("WIDTH", "Custom Width", "", "", 2),
-               ("PIXEL", "Pixel Width", "", "", 3),
-               ],
-        name="Size", default="AUTOFIT",
+        items=[
+            ("AUTOFIT", "Autofit", "", "", 1),
+            ("WIDTH", "Custom Width", "", "", 2),
+            ("PIXEL", "Pixel Width", "", "", 3),
+        ],
+        name="Size",
+        default="AUTOFIT",
         description="Autofit: Automatically fits all resolutions to 1 BU (meter)\n"
-                    "Width: Set custom mesh size/width\n"
-                    "Pixel: Calculate size based on set custom pixel size/width \n")
+        "Width: Set custom mesh size/width\n"
+        "Pixel: Calculate size based on set custom pixel size/width \n",
+    )
 
     coll = None
     wm = None
@@ -310,10 +418,10 @@ class KeI2M(Operator):
         layout.prop(self, "vcolor", toggle=True)
         if self.vcolor:
             layout.prop(self, "vcthreshold", expand=True)
-        
+
         if not is_bversion(4100):
             layout.prop(self, "shade_smooth", toggle=True)
-        
+
         if not c2m_mode:
             if not self.vcolor:
                 layout.prop(self, "qnd_mat", toggle=True)
@@ -356,14 +464,18 @@ class KeI2M(Operator):
                 for h in range(0, height):
                     rgba = make_entry(h, width, w, pixels)
                     if use_rgb:
-                        if rmin < rgba[0] < rmax and gmin < rgba[1] < gmax and bmin < rgba[2] < bmax:
+                        if (
+                            rmin < rgba[0] < rmax
+                            and gmin < rgba[1] < gmax
+                            and bmin < rgba[2] < bmax
+                        ):
                             pass
                         else:
                             for dx in range(-self.dilation, self.dilation):
                                 for dy in range(-self.dilation, self.dilation):
                                     i = (((h + dy) * width) + (w + dx)) * 4
                                     if 0 < i < tot:
-                                        pm_dilated[i:i + 3] = (0, 0, 0)
+                                        pm_dilated[i : i + 3] = (0, 0, 0)
                     else:
                         if rgba[3] >= tolerance:
                             for dx in range(-self.dilation, self.dilation):
@@ -378,7 +490,11 @@ class KeI2M(Operator):
             for w in range(start, width_range):
                 for h in range(0, height):
                     rgba = make_entry(h, width, w, pixels)
-                    if rmin < rgba[0] < rmax and gmin < rgba[1] < gmax and bmin < rgba[2] < bmax:
+                    if (
+                        rmin < rgba[0] < rmax
+                        and gmin < rgba[1] < gmax
+                        and bmin < rgba[2] < bmax
+                    ):
                         pass
                     else:
                         pixel_map.append([w * scl, h * scl, rgba])
@@ -390,9 +506,13 @@ class KeI2M(Operator):
                         pixel_map.append([w * scl, h * scl, rgba])
         # Limit colors
         if self.c2m:
-            pixel_map, self.cmats = reduce_colors(pixelmap=pixel_map, threshold=self.c2threshold, cap=self.color_cap)
+            pixel_map, self.cmats = reduce_colors(
+                pixelmap=pixel_map, threshold=self.c2threshold, cap=self.color_cap
+            )
         elif self.vcolor and self.vcthreshold > 0:
-            pixel_map, self.cmats = reduce_colors(pixelmap=pixel_map, threshold=self.vcthreshold, cap=None)
+            pixel_map, self.cmats = reduce_colors(
+                pixelmap=pixel_map, threshold=self.vcthreshold, cap=None
+            )
 
         return pixel_map
 
@@ -405,7 +525,14 @@ class KeI2M(Operator):
             for i, v in enumerate(pixel_map):
                 x, y = v[:2]
                 x -= w
-                verts.extend([[0, -s + x, s + y], [0, -s + x, -s + y], [0, s + x, -s + y], [0, s + x, s + y]])
+                verts.extend(
+                    [
+                        [0, -s + x, s + y],
+                        [0, -s + x, -s + y],
+                        [0, s + x, -s + y],
+                        [0, s + x, s + y],
+                    ]
+                )
                 offset = i * 4
                 faces.append([0 + offset, 1 + offset, 2 + offset, 3 + offset])
         elif axis == "Top":
@@ -414,14 +541,27 @@ class KeI2M(Operator):
                 x -= w
                 y -= w
                 verts.extend(
-                    [[-s + x, s + y, w], [-s + x, -s + y, w], [s + x, -s + y, w], [s + x, s + y, w]])
+                    [
+                        [-s + x, s + y, w],
+                        [-s + x, -s + y, w],
+                        [s + x, -s + y, w],
+                        [s + x, s + y, w],
+                    ]
+                )
                 offset = i * 4
                 faces.append([0 + offset, 1 + offset, 2 + offset, 3 + offset])
         else:  # Front
             for i, v in enumerate(pixel_map):
                 x, y = v[:2]
                 x -= w
-                verts.extend([[-s + x, 0, s + y], [-s + x, 0, -s + y], [s + x, 0, -s + y], [s + x, 0, s + y]])
+                verts.extend(
+                    [
+                        [-s + x, 0, s + y],
+                        [-s + x, 0, -s + y],
+                        [s + x, 0, -s + y],
+                        [s + x, 0, s + y],
+                    ]
+                )
                 offset = i * 4
                 faces.append([0 + offset, 1 + offset, 2 + offset, 3 + offset])
 
@@ -457,7 +597,13 @@ class KeI2M(Operator):
             smoothverts = []
 
             if self.c2m:
-                bmesh.ops.dissolve_limit(bm, angle_limit=0.08728, verts=bm.verts, edges=bm.edges, delimit={"MATERIAL"})
+                bmesh.ops.dissolve_limit(
+                    bm,
+                    angle_limit=0.08728,
+                    verts=bm.verts,
+                    edges=bm.edges,
+                    delimit={"MATERIAL"},
+                )
                 if self.c2m_smooth != 0:
                     smedges = []
                     for e in bm.edges:
@@ -468,8 +614,14 @@ class KeI2M(Operator):
                                 smoothverts.append(e.verts[1])
                             smedges.append(e)
                     smoothverts = list(set(smoothverts))
-                    bmesh.ops.smooth_vert(bm, verts=smoothverts, factor=(self.c2m_smooth / 100) * 0.5,
-                                          use_axis_x=True, use_axis_y=True, use_axis_z=True)
+                    bmesh.ops.smooth_vert(
+                        bm,
+                        verts=smoothverts,
+                        factor=(self.c2m_smooth / 100) * 0.5,
+                        use_axis_x=True,
+                        use_axis_y=True,
+                        use_axis_z=True,
+                    )
             else:
                 for f in bm.faces:
                     es = []
@@ -479,23 +631,40 @@ class KeI2M(Operator):
                                 es.extend(e.verts[:])
                     if len(es) == 4:
                         visited = set()
-                        dup = {v for v in es if v in visited or (visited.add(v) or False)}
+                        dup = {
+                            v for v in es if v in visited or (visited.add(v) or False)
+                        }
                         if dup:
                             smoothverts.extend(dup)
                 smoothverts = list(set(smoothverts))
                 if smoothverts:
-                    bmesh.ops.dissolve_verts(bm, verts=smoothverts, use_face_split=True, use_boundary_tear=True)
+                    bmesh.ops.dissolve_verts(
+                        bm,
+                        verts=smoothverts,
+                        use_face_split=True,
+                        use_boundary_tear=True,
+                    )
                     bmesh.ops.unsubdivide(bm, verts=inner_verts, iterations=64)
-                    bmesh.ops.dissolve_limit(bm, angle_limit=0.08727, verts=bm.verts, edges=bm.edges)
+                    bmesh.ops.dissolve_limit(
+                        bm, angle_limit=0.08727, verts=bm.verts, edges=bm.edges
+                    )
 
         elif self.reduce == "SIMPLE":
             bmesh.ops.unsubdivide(bm, verts=inner_verts, iterations=64)
             if not self.geo == "BOOLEAN":
                 smoothverts = [v for v in bm.verts if v.is_boundary]
-                bmesh.ops.smooth_vert(bm, verts=smoothverts, factor=1.0,
-                                      use_axis_x=True, use_axis_y=True, use_axis_z=True)
+                bmesh.ops.smooth_vert(
+                    bm,
+                    verts=smoothverts,
+                    factor=1.0,
+                    use_axis_x=True,
+                    use_axis_y=True,
+                    use_axis_z=True,
+                )
             else:
-                bmesh.ops.dissolve_limit(bm, angle_limit=0.08727, verts=bm.verts, edges=bm.edges)
+                bmesh.ops.dissolve_limit(
+                    bm, angle_limit=0.08727, verts=bm.verts, edges=bm.edges
+                )
 
         elif self.reduce == "REDUCED":
             bmesh.ops.unsubdivide(bm, verts=inner_verts, iterations=64)
@@ -529,7 +698,7 @@ class KeI2M(Operator):
         projector = bpy.data.objects.new(p_name, None)
         self.coll.objects.link(projector)
         projector.hide_viewport = True
-        projector.empty_display_type = 'SINGLE_ARROW'
+        projector.empty_display_type = "SINGLE_ARROW"
         if axis == "Right":
             projector.rotation_euler = [-1.5707963, 3.1415926, -1.5707963]
         elif axis == "Top":
@@ -639,7 +808,7 @@ class KeI2M(Operator):
     def progress_update(self, context, txt, done):
         if done:
             tstat = round((time.time() - self.t), 5)
-            t = '{:f}'.format(tstat).rstrip('0')
+            t = "{:f}".format(tstat).rstrip("0")
             if len(t) > 6:
                 t = t[:6]
             msg = "\r{0}: [   COMPLETE   ] {1}s\r\n".format(txt, t)
@@ -732,17 +901,30 @@ class KeI2M(Operator):
         if self.vcolor:
             self.reduce = "NONE"
             if context.space_data.shading.type in {"SOLID", "RENDERED", "MATERIAL"}:
-                context.space_data.shading.color_type = 'VERTEX'
+                context.space_data.shading.color_type = "VERTEX"
         else:
             if context.space_data.shading.type in {"SOLID", "RENDERED", "MATERIAL"}:
-                context.space_data.shading.color_type = 'TEXTURE'
+                context.space_data.shading.color_type = "TEXTURE"
 
         # ----------------------------------------------------------------------------------------------
         # Image(s) Setup
         # ----------------------------------------------------------------------------------------------
         axis = ["Front", "Right", "Top", "Back", "Left", "Bottom"]
-        front_img, right_img, top_img, back_img, left_img, bottom_img = None, None, None, None, None, None
-        replace_right, replace_top, replace_left, replace_back, replace_bottom = False, False, False, False, False
+        front_img, right_img, top_img, back_img, left_img, bottom_img = (
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+        replace_right, replace_top, replace_left, replace_back, replace_bottom = (
+            False,
+            False,
+            False,
+            False,
+            False,
+        )
 
         if k.FRONT:
             front_img = bpy.data.images.get(k.FRONT)
@@ -834,13 +1016,18 @@ class KeI2M(Operator):
                 non_square_z = 1
 
             if self.geo == "BOOLEAN":
-                self.report({"INFO"}, "Warning: Images are not the same resolution -or- not square")
+                self.report(
+                    {"INFO"},
+                    "Warning: Images are not the same resolution -or- not square",
+                )
 
         # Work Res
         if self.workres == "IMAGE":
             work_res = ref_image.size[0]
             if work_res >= 1024:
-                sys.stdout.write("WARNING: Work Resolution >= 1024 : May be slow/fail!\n")
+                sys.stdout.write(
+                    "WARNING: Work Resolution >= 1024 : May be slow/fail!\n"
+                )
         else:
             work_res = int(self.workres)
 
@@ -899,7 +1086,9 @@ class KeI2M(Operator):
                 pixels = img.pixels[:]
                 width = img.size[0]
                 height = img.size[1]
-                pixel_map = self.make_pixel_map(width, height, pixels, scl, use_rgb=self.use_rgb)
+                pixel_map = self.make_pixel_map(
+                    width, height, pixels, scl, use_rgb=self.use_rgb
+                )
                 self.progress_update(context, " Generate Pixel Map ", True)
 
                 # Create Mesh Data
@@ -908,7 +1097,9 @@ class KeI2M(Operator):
                 existing = bpy.data.meshes.get(mesh_name)
                 if existing:
                     bpy.data.meshes.remove(existing)
-                mesh = self.make_mesh_data(pixel_map, work_res, scl, name=mesh_name, axis=axis_name)
+                mesh = self.make_mesh_data(
+                    pixel_map, work_res, scl, name=mesh_name, axis=axis_name
+                )
                 self.progress_update(context, " Create Mesh Data   ", True)
 
                 # Bmesh Cleanup & Processing
@@ -935,7 +1126,7 @@ class KeI2M(Operator):
         # ----------------------------------------------------------------------------------------------
         if self.c2m:
             for i, material in enumerate(self.cmats):
-                mat = bpy.data.materials.new(name="I2M_"+str(i))
+                mat = bpy.data.materials.new(name="I2M_" + str(i))
                 mat.diffuse_color = material
                 final_object.data.materials.append(mat)
 
@@ -1024,7 +1215,9 @@ class KeI2M(Operator):
         if self.vcolor or self.c2m:
             pass
         else:
-            uv_project = final_object.modifiers.new(name="I2M UV-Project", type="UV_PROJECT")
+            uv_project = final_object.modifiers.new(
+                name="I2M UV-Project", type="UV_PROJECT"
+            )
             uv_project.uv_layer = "UVMap"
             uv_project.projector_count = len(projectors)
             for i, p in enumerate(projectors):
@@ -1059,7 +1252,7 @@ class KeI2M(Operator):
         if self.tot > 60:
             tot = str(round((self.tot / 60), 1)) + "min"
         else:
-            tot = '{:f}'.format(self.tot).rstrip('0') + "s"
+            tot = "{:f}".format(self.tot).rstrip("0") + "s"
 
         sys.stdout.write("\n Total              : [   COMPLETE   ] %s\n\n" % tot)
         sys.stdout.flush()
@@ -1088,7 +1281,7 @@ class KeI2M(Operator):
         if self.geo != "BOOLEAN" and self.front_only:
             self.front_only = False
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class KeI2Mreload(Operator):
@@ -1116,7 +1309,11 @@ class KeI2Mreload(Operator):
                 i.reload()
         context.area.tag_redraw()
         if missing:
-            self.report({"INFO"}, "%s slot(s) reloaded - %s slot(s) empty/invalid" % (str(found), str(missing)))
+            self.report(
+                {"INFO"},
+                "%s slot(s) reloaded - %s slot(s) empty/invalid"
+                % (str(found), str(missing)),
+            )
         return {"FINISHED"}
 
 
@@ -1126,10 +1323,11 @@ class KeI2Mfilebrowser(Operator, ImportHelper):
     bl_description = "Open filebrowser to load image(s)"
 
     filter_glob: StringProperty(
-        default='*.png;*.tif;*.tiff;*.exr;*.hdr;*.tga;*.sgi;*.rgb;*.bw;*.jp2;*.j2c;*.cin;*.dpx',
-        options={'HIDDEN'})
+        default="*.png;*.tif;*.tiff;*.exr;*.hdr;*.tga;*.sgi;*.rgb;*.bw;*.jp2;*.j2c;*.cin;*.dpx",
+        options={"HIDDEN"},
+    )
 
-    axis : StringProperty(name="Axis Name", default="", options={'HIDDEN'})
+    axis: StringProperty(name="Axis Name", default="", options={"HIDDEN"})
 
     def execute(self, context):
         print("\n[------------- keI2M Image Loader -------------]")
@@ -1142,8 +1340,10 @@ class KeI2Mfilebrowser(Operator, ImportHelper):
         # filename check
         if len(loaded_name) > 63:
             print("Filename: '%s'" % loaded_name)
-            print("  -> Filename is too long (>64) - will be shortened (internally in Blender)\n"
-                  "  -> 'Reload Image(s)' operator will not work\n")
+            print(
+                "  -> Filename is too long (>64) - will be shortened (internally in Blender)\n"
+                "  -> 'Reload Image(s)' operator will not work\n"
+            )
 
         ext = "." + loaded[-1]
         loaded_dir = os.path.dirname(self.filepath)
@@ -1156,13 +1356,16 @@ class KeI2Mfilebrowser(Operator, ImportHelper):
             suffix_check = False
 
             if suffix[0] not in loaded_name:
-                self.report({"INFO"}, "Failed to autoload %s - Wrong suffix for 1st slot" % loaded_name)
+                self.report(
+                    {"INFO"},
+                    "Failed to autoload %s - Wrong suffix for 1st slot" % loaded_name,
+                )
                 return {"CANCELLED"}
 
             for s in suffix:
                 if s in loaded_name:
                     suffix_check = True
-                    loaded_name = loaded_name.replace(s, '')
+                    loaded_name = loaded_name.replace(s, "")
                     suffix.remove(s)
                     break
             if suffix_check:
@@ -1194,7 +1397,7 @@ class KeI2Mfilebrowser(Operator, ImportHelper):
         if alpha_missing:
             self.report({"WARNING"}, "Missing Alpha Channel: %s" % alpha_missing)
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class KeI2Mbatchbrowser(Operator, ImportHelper):
@@ -1202,15 +1405,28 @@ class KeI2Mbatchbrowser(Operator, ImportHelper):
     bl_label = "Batch Process Folder"
     bl_description = "Pick a folder to batch kei2m on ALL the images in the folder.\n --> Using last used settings <--"
 
-    filter_glob : bpy.props.StringProperty(subtype="DIR_PATH")
+    filter_glob: bpy.props.StringProperty(subtype="DIR_PATH")
 
     def execute(self, context):
         if not self.filepath:
             return {"CANCELLED"}
 
         # Load images in folder to Batch
-        filter_glob = ('.png', '.tif', '.tiff', '.exr', '.hdr', '.tga', '.sgi', '.rgb', '.bw', '.jp2', '.j2c', '.cin',
-                       '.dpx')
+        filter_glob = (
+            ".png",
+            ".tif",
+            ".tiff",
+            ".exr",
+            ".hdr",
+            ".tga",
+            ".sgi",
+            ".rgb",
+            ".bw",
+            ".jp2",
+            ".j2c",
+            ".cin",
+            ".dpx",
+        )
         images = []
         img_count = 0
 
@@ -1223,7 +1439,9 @@ class KeI2Mbatchbrowser(Operator, ImportHelper):
                     images.append(file)
 
         if not images:
-            sys.stdout.write("\nkei2m Batch Process Aborted: No images could be loaded\n")
+            sys.stdout.write(
+                "\nkei2m Batch Process Aborted: No images could be loaded\n"
+            )
             self.report({"INFO"}, "Aborted: No images could be loaded")
             return {"CANCELLED"}
 
@@ -1238,31 +1456,7 @@ class KeI2Mbatchbrowser(Operator, ImportHelper):
             bpy.ops.ke.i2m(batch=True)
 
         k.FRONT = ""
-        return {'FINISHED'}
-
-
-class KeI2Mclearslot(Operator):
-    bl_idname = "ke.i2m_clearslot"
-    bl_label = "Clear i2m File Slot"
-
-    axis : StringProperty(name="Axis Name", default="")
-
-    @classmethod
-    def description(cls, context, properties):
-        if properties.axis == "ALL":
-            return "Clear All Image Slots"
-        else:
-            return "Clear Image Slot"
-
-    def execute(self, context):
-        k = context.scene.kei2m
-        if self.axis == "ALL":
-            for axis in ["FRONT", "RIGHT", "TOP", "BACK", "LEFT", "BOTTOM"]:
-                k[axis] = ""
-        else:
-            k[self.axis] = ""
-        context.area.tag_redraw()
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def load_slot(path):
@@ -1277,16 +1471,23 @@ def load_slot(path):
 # UI
 # ------------------------------------------------------------------------------------------------------------
 class VIEW3D_PT_i2m(Panel):
-    bl_label = 'keI2M v%s' % str(kei2m_version)
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = 'kei2m'
+    bl_label = "keI2M v%s" % str(kei2m_version)
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "kei2m"
 
     def draw_header_preset(self, context):
         layout = self.layout
-        layout.emboss = 'NONE'
+        layout.emboss = "NONE"
         row = layout.row(align=False)
-        row.prop(context.scene.kei2m, 'info', text="", icon="QUESTION", icon_only=True, emboss=False)
+        row.prop(
+            context.scene.kei2m,
+            "info",
+            text="",
+            icon="QUESTION",
+            icon_only=True,
+            emboss=False,
+        )
         row.separator(factor=0.5)
 
     def draw(self, context):
@@ -1311,19 +1512,25 @@ class VIEW3D_PT_i2m(Panel):
             row = layout.row(align=True)
             row.prop(k, "autofill")
             row = layout.row(align=True)
-            row.operator("ke.i2m_filebrowser", text="Front   ", icon="FILEBROWSER").axis = "FRONT"
+            row.operator(
+                "ke.i2m_filebrowser", text="Front   ", icon="FILEBROWSER"
+            ).axis = "FRONT"
             row.prop(k, "FRONT", text="")
             row.operator("ke.i2m_clearslot", text="", icon="X").axis = "FRONT"
             row = layout.row(align=True)
             if not has_front:
                 row.enabled = False
-            row.operator("ke.i2m_filebrowser", text="Right   ", icon="FILEBROWSER").axis = "RIGHT"
+            row.operator(
+                "ke.i2m_filebrowser", text="Right   ", icon="FILEBROWSER"
+            ).axis = "RIGHT"
             row.prop(k, "RIGHT", text="")
             row.operator("ke.i2m_clearslot", text="", icon="X").axis = "RIGHT"
             row = layout.row(align=True)
             if not has_front:
                 row.enabled = False
-            row.operator("ke.i2m_filebrowser", text="Top      ", icon="FILEBROWSER").axis = "TOP"
+            row.operator(
+                "ke.i2m_filebrowser", text="Top      ", icon="FILEBROWSER"
+            ).axis = "TOP"
             row.prop(k, "TOP", text="")
             row.operator("ke.i2m_clearslot", text="", icon="X").axis = "TOP"
 
@@ -1336,29 +1543,39 @@ class VIEW3D_PT_i2m(Panel):
             if not has_front or not has_2:
                 row.enabled = False
             row.scale_y = 1
-            row.operator("ke.i2m_filebrowser", text="Back    ", icon="FILEBROWSER").axis = "BACK"
+            row.operator(
+                "ke.i2m_filebrowser", text="Back    ", icon="FILEBROWSER"
+            ).axis = "BACK"
             row.prop(k, "BACK", text="")
             row.operator("ke.i2m_clearslot", text="", icon="X").axis = "BACK"
             row = layout.row(align=True)
             if not has_front or not has_2:
                 row.enabled = False
-            row.operator("ke.i2m_filebrowser", text="Left     ", icon="FILEBROWSER").axis = "LEFT"
+            row.operator(
+                "ke.i2m_filebrowser", text="Left     ", icon="FILEBROWSER"
+            ).axis = "LEFT"
             row.prop(k, "LEFT", text="")
             row.operator("ke.i2m_clearslot", text="", icon="X").axis = "LEFT"
             row = layout.row(align=True)
             if not has_front or not has_2:
                 row.enabled = False
-            row.operator("ke.i2m_filebrowser", text="Bottom", icon="FILEBROWSER").axis = "BOTTOM"
+            row.operator(
+                "ke.i2m_filebrowser", text="Bottom", icon="FILEBROWSER"
+            ).axis = "BOTTOM"
             row.prop(k, "BOTTOM", text="")
             row.operator("ke.i2m_clearslot", text="", icon="X").axis = "BOTTOM"
             row = layout.row(align=True)
             if not has_front:
                 row.enabled = False
-            row.operator("ke.i2m_clearslot", text="Clear All", icon="CANCEL").axis = "ALL"
+            row.operator("ke.i2m_clearslot", text="Clear All", icon="CANCEL").axis = (
+                "ALL"
+            )
         else:
             row.label(text="Load Image")
             row = col.row(align=True)
-            row.operator("ke.i2m_filebrowser", text="", icon="FILEBROWSER").axis = "FRONT"
+            row.operator("ke.i2m_filebrowser", text="", icon="FILEBROWSER").axis = (
+                "FRONT"
+            )
             row.prop(k, "FRONT", text="")
             row.operator("ke.i2m_clearslot", text="", icon="X").axis = "FRONT"
 
@@ -1384,9 +1601,7 @@ class VIEW3D_PT_i2m(Panel):
 # Prefs
 # ------------------------------------------------------------------------------------------------------------
 # Panels to update
-panels = (
-        VIEW3D_PT_i2m,
-        )
+panels = (VIEW3D_PT_i2m,)
 
 
 def update_panel(self, context):
@@ -1397,7 +1612,9 @@ def update_panel(self, context):
                 bpy.utils.unregister_class(panel)
 
         for panel in panels:
-            panel.bl_category = context.preferences.addons[__name__].preferences.category
+            panel.bl_category = context.preferences.addons[
+                __name__
+            ].preferences.category
             bpy.utils.register_class(panel)
 
     except Exception as e:
@@ -1409,16 +1626,24 @@ class KeI2Maddonprefs(AddonPreferences):
     bl_idname = __name__
 
     category: StringProperty(
-            name="Tab Category",
-            description="Choose a name (category) for tab placement",
-            default="kei2m",
-            update=update_panel
-            )
-    use_rgb: BoolProperty(name="Use RGB instead of Alpha", default=False,
-                          description="Use the user RGB color instead of Alpha channel")
-    user_rgb: FloatVectorProperty(name="User RGB", subtype="COLOR", size=3, default=(1.0, 1.0, 1.0))
-    cap: IntProperty(default=16, name="Material Cap",
-                     description="Maximum number of materials generated in Color 2 Material Mode.")
+        name="Tab Category",
+        description="Choose a name (category) for tab placement",
+        default="kei2m",
+        update=update_panel,
+    )
+    use_rgb: BoolProperty(
+        name="Use RGB instead of Alpha",
+        default=False,
+        description="Use the user RGB color instead of Alpha channel",
+    )
+    user_rgb: FloatVectorProperty(
+        name="User RGB", subtype="COLOR", size=3, default=(1.0, 1.0, 1.0)
+    )
+    cap: IntProperty(
+        default=16,
+        name="Material Cap",
+        description="Maximum number of materials generated in Color 2 Material Mode.",
+    )
 
     def draw(self, context):
         layout = self.layout
@@ -1440,31 +1665,55 @@ class KeI2Mprops(PropertyGroup):
     BACK: StringProperty(default="", name="Back Image", description="+Y Axis Image")
     LEFT: StringProperty(default="", name="Left Image", description="-X Axis Image")
     BOTTOM: StringProperty(default="", name="Bottom Image", description="-Z Axis Image")
-    autofill: BoolProperty(name="Autofill", default=False,
-                           description="Auto-Fill other slots by suffixes when loading an image.\n "
-                                       "Valid suffixes:\n"
-                                       "_front, _right, _top\n"
-                                       "_back,  _left,  _bottom")
-    info: BoolProperty(name="kei2m General Info", default=False,
-                       description="Load Alpha Images to convert into mesh (in Object Mode).\n"
-                                   "A single image is required for PLANE & SCREW (& C2M) modes.\n"
-                                   "2 or more images are required for BOOLEAN mode.\n"
-                                   "Adjust result in Redo Panel.\n"
-                                   "Non-alpha color option in Addon Preferences.\n"
-                                   "See progress output in Console Window.")
+    autofill: BoolProperty(
+        name="Autofill",
+        default=False,
+        description="Auto-Fill other slots by suffixes when loading an image.\n "
+        "Valid suffixes:\n"
+        "_front, _right, _top\n"
+        "_back,  _left,  _bottom",
+    )
+    info: BoolProperty(
+        name="kei2m General Info",
+        default=False,
+        description="Load Alpha Images to convert into mesh (in Object Mode).\n"
+        "A single image is required for PLANE & SCREW (& C2M) modes.\n"
+        "2 or more images are required for BOOLEAN mode.\n"
+        "Adjust result in Redo Panel.\n"
+        "Non-alpha color option in Addon Preferences.\n"
+        "See progress output in Console Window.",
+    )
     opacity: IntProperty(default=95)
     workres: StringProperty(default="128")
     geo: EnumProperty(
-        items=[("PLANE", "Plane", "Converts into a Plane Mesh", "", 1),
-               ("SCREW", "Screw", "A Screw Modifier revolves one side of a (symmetrical) image to a cylindrical shape",
-                "", 2),
-               ("BOOLEAN", "Boolean",
-                "Uses 2-3 images (front + right/top) to carve out a rough 3d shape using Intersect", "", 3),
-               ("C2M", "Color 2 Material", "Splits along color borders and assigns color materials on an mesh plane",
-                "", 4),
-               ],
-        name="Geo Type", default="PLANE",
-        description="Which type of geo conversion to use")
+        items=[
+            ("PLANE", "Plane", "Converts into a Plane Mesh", "", 1),
+            (
+                "SCREW",
+                "Screw",
+                "A Screw Modifier revolves one side of a (symmetrical) image to a cylindrical shape",
+                "",
+                2,
+            ),
+            (
+                "BOOLEAN",
+                "Boolean",
+                "Uses 2-3 images (front + right/top) to carve out a rough 3d shape using Intersect",
+                "",
+                3,
+            ),
+            (
+                "C2M",
+                "Color 2 Material",
+                "Splits along color borders and assigns color materials on an mesh plane",
+                "",
+                4,
+            ),
+        ],
+        name="Geo Type",
+        default="PLANE",
+        description="Which type of geo conversion to use",
+    )
     screw_flip: BoolProperty(default=False)
     screw_xcomp: IntProperty(default=15)
     reduce: StringProperty(default="SIMPLE")
@@ -1476,6 +1725,7 @@ class KeI2Mprops(PropertyGroup):
     angle: FloatProperty(default=0.5)
     custom_workres: IntProperty(default=0)
     vcolor: BoolProperty(default=False)
+
 
 # ------------------------------------------------------------------------------------------------------------
 # Registration
@@ -1502,7 +1752,9 @@ def register():
     try:
         if "bl_rna" in VIEW3D_PT_i2m.__dict__:
             bpy.utils.unregister_class(VIEW3D_PT_i2m)
-        VIEW3D_PT_i2m.bl_category = bpy.context.preferences.addons[__name__].preferences.category
+        VIEW3D_PT_i2m.bl_category = bpy.context.preferences.addons[
+            __name__
+        ].preferences.category
         bpy.utils.register_class(VIEW3D_PT_i2m)
     except Exception as e:
         print("kei2m panel update failed:\n", e)
@@ -1516,7 +1768,7 @@ def unregister():
         del bpy.types.Scene.kei2m
 
     except Exception as e:
-        print('unregister fail:\n', e)
+        print("unregister fail:\n", e)
         pass
 
 
