@@ -1,12 +1,10 @@
-from bpy.types import PropertyGroup, Operator, Panel, AddonPreferences
+from bpy.types import PropertyGroup
 from bpy.props import (
     BoolProperty,
-    PointerProperty,
     FloatProperty,
     StringProperty,
     EnumProperty,
     IntProperty,
-    FloatVectorProperty,
 )
 
 

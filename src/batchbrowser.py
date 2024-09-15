@@ -1,5 +1,7 @@
+import os
+import sys
 import bpy
-from bpy.types import PropertyGroup, Operator, Panel, AddonPreferences
+from bpy.types import Operator
 from bpy_extras.io_utils import ImportHelper
 from bpy.props import (
     StringProperty,

@@ -1,4 +1,4 @@
-from bpy.types import PropertyGroup, Operator, Panel, AddonPreferences
+from bpy.types import Panel
 
 from ..utilities import kei2m_version
 

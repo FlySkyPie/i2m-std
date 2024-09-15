@@ -2,18 +2,16 @@ import bpy
 import bmesh
 import sys
 import time
-from bpy.types import PropertyGroup, Operator, Panel, AddonPreferences
+from bpy.types import Operator
 from mathutils import Vector, Matrix
-from bpy_extras.io_utils import ImportHelper
 from bpy.props import (
     BoolProperty,
-    PointerProperty,
     FloatProperty,
-    StringProperty,
     EnumProperty,
     IntProperty,
-    FloatVectorProperty,
 )
+
+from .utilities import alpha_check, is_bversion, make_entry, reduce_colors
 
 
 class KeI2M(Operator):
@@ -828,7 +826,7 @@ class KeI2M(Operator):
             None,
             None,
         )
-        replace_right, replace_top, replace_left, replace_back, replace_bottom = (
+        replace_right, replace_top, replace_left, _replace_back, replace_bottom = (
             False,
             False,
             False,

@@ -1,19 +1,14 @@
 import os
 
 import bpy
-from bpy.types import PropertyGroup, Operator, Panel, AddonPreferences
+from bpy.types import Operator
 from bpy_extras.io_utils import ImportHelper
 from bpy.props import (
-    BoolProperty,
-    PointerProperty,
-    FloatProperty,
     StringProperty,
-    EnumProperty,
-    IntProperty,
-    FloatVectorProperty,
 )
 
-from .utilities import load_slot
+from .utilities import load_slot, alpha_check
+
 
 class KeI2Mfilebrowser(Operator, ImportHelper):
     bl_idname = "ke.i2m_filebrowser"

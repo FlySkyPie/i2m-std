@@ -1,5 +1,5 @@
 import bpy
-from bpy.types import PropertyGroup, Operator, Panel, AddonPreferences
+from bpy.types import Operator
 
 class KeI2Mreload(Operator):
     bl_idname = "ke.i2m_reload"
