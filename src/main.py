@@ -806,13 +806,14 @@ class KeI2M(Operator):
             self.custom_workres = k.custom_workres
 
         # Auto Set View mode QoL (and make sure no geo smoothing is used for vertex color mode)
-        if self.vcolor:
-            self.reduce = "NONE"
-            if context.space_data.shading.type in {"SOLID", "RENDERED", "MATERIAL"}:
-                context.space_data.shading.color_type = "VERTEX"
-        else:
-            if context.space_data.shading.type in {"SOLID", "RENDERED", "MATERIAL"}:
-                context.space_data.shading.color_type = "TEXTURE"
+        if context.space_data:
+            if self.vcolor:
+                self.reduce = "NONE"
+                if context.space_data.shading.type in {"SOLID", "RENDERED", "MATERIAL"}:
+                    context.space_data.shading.color_type = "VERTEX"
+            else:
+                if context.space_data.shading.type in {"SOLID", "RENDERED", "MATERIAL"}:
+                    context.space_data.shading.color_type = "TEXTURE"
 
         # ----------------------------------------------------------------------------------------------
         # Image(s) Setup
