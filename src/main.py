@@ -750,7 +750,7 @@ class KeI2M(Operator):
             self.vcolor = False
             return {"FINISHED"}
 
-        k = context.scene.kei2m
+        k_props = context.scene.kei2m
         kap = context.preferences.addons["ke_i2m"].preferences
 
         self.color_cap = kap.cap
@@ -759,7 +759,7 @@ class KeI2M(Operator):
         if self.use_rgb:
             self.rgb = kap.user_rgb
 
-        self.geo = k.geo
+        self.geo = k_props.geo
 
         # Forced Overrides
         if self.geo == "C2M":
@@ -790,20 +790,20 @@ class KeI2M(Operator):
 
         # Batch setup ( since it refuses to reuse last used settings ran as op?..)
         if self.batch:
-            self.opacity = k.opacity
-            self.workres = k.workres
-            self.geo = k.geo
-            self.screw_flip = k.screw_flip
-            self.screw_xcomp = k.screw_xcomp
-            self.reduce = k.reduce
-            self.shade_smooth = k.shade_smooth
+            self.opacity = k_props.opacity
+            self.workres = k_props.workres
+            self.geo = k_props.geo
+            self.screw_flip = k_props.screw_flip
+            self.screw_xcomp = k_props.screw_xcomp
+            self.reduce = k_props.reduce
+            self.shade_smooth = k_props.shade_smooth
             self.front_only = True
-            self.qnd_mat = k.qnd_mat
-            self.apply = k.apply
-            self.apply_none = k.apply_none
-            self.angle = k.angle
-            self.vcolor = k.vcolor
-            self.custom_workres = k.custom_workres
+            self.qnd_mat = k_props.qnd_mat
+            self.apply = k_props.apply
+            self.apply_none = k_props.apply_none
+            self.angle = k_props.angle
+            self.vcolor = k_props.vcolor
+            self.custom_workres = k_props.custom_workres
 
         # Auto Set View mode QoL (and make sure no geo smoothing is used for vertex color mode)
         if context.space_data:
@@ -835,24 +835,24 @@ class KeI2M(Operator):
             False,
         )
 
-        if k.FRONT:
-            front_img = bpy.data.images.get(k.FRONT)
-        if k.RIGHT:
-            right_img = bpy.data.images.get(k.RIGHT)
+        if k_props.FRONT:
+            front_img = bpy.data.images.get(k_props.FRONT)
+        if k_props.RIGHT:
+            right_img = bpy.data.images.get(k_props.RIGHT)
         else:
             replace_right = True
-        if k.TOP:
-            top_img = bpy.data.images.get(k.TOP)
+        if k_props.TOP:
+            top_img = bpy.data.images.get(k_props.TOP)
         else:
             replace_top = True
-        if k.BACK:
-            back_img = bpy.data.images.get(k.BACK)
-        if k.LEFT:
-            left_img = bpy.data.images.get(k.LEFT)
+        if k_props.BACK:
+            back_img = bpy.data.images.get(k_props.BACK)
+        if k_props.LEFT:
+            left_img = bpy.data.images.get(k_props.LEFT)
         else:
             replace_left = True
-        if k.BOTTOM:
-            bottom_img = bpy.data.images.get(k.BOTTOM)
+        if k_props.BOTTOM:
+            bottom_img = bpy.data.images.get(k_props.BOTTOM)
         else:
             replace_bottom = True
 
@@ -1167,20 +1167,20 @@ class KeI2M(Operator):
         sys.stdout.flush()
 
         if not self.batch:
-            k.opacity = self.opacity
-            k.workres = self.workres
-            k.geo = self.geo
-            k.screw_flip = self.screw_flip
-            k.screw_xcomp = self.screw_xcomp
-            k.reduce = self.reduce
-            k.shade_smooth = self.shade_smooth
-            k.front_only = self.front_only
-            k.qnd_mat = self.qnd_mat
-            k.apply = self.apply
-            k.apply_none = self.apply_none
-            k.angle = self.angle
-            k.custom_workres = self.custom_workres
-            k.vcolor = self.vcolor
+            k_props.opacity = self.opacity
+            k_props.workres = self.workres
+            k_props.geo = self.geo
+            k_props.screw_flip = self.screw_flip
+            k_props.screw_xcomp = self.screw_xcomp
+            k_props.reduce = self.reduce
+            k_props.shade_smooth = self.shade_smooth
+            k_props.front_only = self.front_only
+            k_props.qnd_mat = self.qnd_mat
+            k_props.apply = self.apply
+            k_props.apply_none = self.apply_none
+            k_props.angle = self.angle
+            k_props.custom_workres = self.custom_workres
+            k_props.vcolor = self.vcolor
 
         # Needed for 1st-runs, or images can't be accessed by redo panel?!
         bpy.ops.ed.undo_push()

@@ -24,7 +24,7 @@ class KeI2Mfilebrowser(Operator, ImportHelper):
 
     def execute(self, context):
         print("\n[------------- keI2M Image Loader -------------]")
-        k = context.scene.kei2m
+        k_props = context.scene.kei2m
         kap = context.preferences.addons["ke_i2m"].preferences
 
         loaded = bpy.path.basename(self.filepath).split(".")
@@ -44,7 +44,7 @@ class KeI2Mfilebrowser(Operator, ImportHelper):
         paths = [self.filepath]
         slots = [self.axis]
 
-        if k.autofill and k.geo == "BOOLEAN":
+        if k_props.autofill and k_props.geo == "BOOLEAN":
             suffix = ["_front", "_right", "_top", "_back", "_left", "_bottom"]
             suffix_check = False
 
@@ -72,13 +72,13 @@ class KeI2Mfilebrowser(Operator, ImportHelper):
                 print("Autoload failed - Invalid suffix")
 
         alpha_missing = []
-        c2m = True if k.geo == "C2M" else False
+        c2m = True if k_props.geo == "C2M" else False
 
         for f, slot in zip(paths, slots):
             img = load_slot(f)
             if img is not None:
                 filename = img.name
-                k[slot] = filename
+                k_props[slot] = filename
                 if context.area:
                     context.area.tag_redraw()
                 if filename:

@@ -58,12 +58,12 @@ class KeI2Mbatchbrowser(Operator, ImportHelper):
         sys.stdout.write("\nkei2m Batch Process Images Loaded: %s\n" % str(img_count))
 
         # Batch all loaded images
-        k = context.scene.kei2m
+        k_props = context.scene.kei2m
         bpy.ops.ke.i2m_clearslot(axis="ALL")
 
         for img in images:
-            k.FRONT = img
+            k_props.FRONT = img
             bpy.ops.ke.i2m(batch=True)
 
-        k.FRONT = ""
+        k_props.FRONT = ""
         return {"FINISHED"}
