@@ -1,6 +1,7 @@
 import bpy
 from bpy.types import Operator
 
+
 class KeI2Mreload(Operator):
     bl_idname = "ke.i2m_reload"
     bl_label = "I2M Reload"
@@ -24,7 +25,8 @@ class KeI2Mreload(Operator):
                 missing += 1
             if i is not None:
                 i.reload()
-        context.area.tag_redraw()
+        if context.area:
+            context.area.tag_redraw()
         if missing:
             self.report(
                 {"INFO"},

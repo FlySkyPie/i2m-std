@@ -79,7 +79,8 @@ class KeI2Mfilebrowser(Operator, ImportHelper):
             if img is not None:
                 filename = img.name
                 k[slot] = filename
-                context.area.tag_redraw()
+                if context.area:
+                    context.area.tag_redraw()
                 if filename:
                     if alpha_check([img], kap.use_rgb, c2m):
                         print("Image Loaded: %s" % filename)

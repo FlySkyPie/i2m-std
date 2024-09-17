@@ -1183,7 +1183,8 @@ class KeI2M(Operator):
 
         # Needed for 1st-runs, or images can't be accessed by redo panel?!
         bpy.ops.ed.undo_push()
-        context.area.tag_redraw()
+        if context.area:
+            context.area.tag_redraw()
 
         # Very silly
         if self.geo != "BOOLEAN" and self.front_only:

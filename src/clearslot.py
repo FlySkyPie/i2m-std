@@ -24,5 +24,6 @@ class KeI2Mclearslot(Operator):
                 k[axis] = ""
         else:
             k[self.axis] = ""
-        context.area.tag_redraw()
+        if context.area:
+            context.area.tag_redraw()
         return {"FINISHED"}
